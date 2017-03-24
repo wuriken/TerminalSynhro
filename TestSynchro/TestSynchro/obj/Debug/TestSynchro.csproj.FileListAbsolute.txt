@@ -1,0 +1,8 @@
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TestSynchro.exe.config
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\obj\Debug\TestSynchro.csprojResolveAssemblyReference.cache
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TestSynchro.exe
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TestSynchro.pdb
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TerminalSynhro.dll
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TerminalSynhro.pdb
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\obj\Debug\TestSynchro.exe
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\obj\Debug\TestSynchro.pdb
