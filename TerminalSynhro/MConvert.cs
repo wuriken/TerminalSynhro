@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Office.Interop.Excel;
@@ -10,9 +11,9 @@ namespace TerminalSynhro
 {
     public static class MConvert
     {
-        private const string PathToExchangeFolder = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\";
-        private const string PathToInvoiceTerminalFolder = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Invoices\";
-        private const string PathToRootTerminalFolder = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\";
+        private static string PathToExchangeFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\";
+        private static string PathToInvoiceTerminalFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Invoices\";
+        public static string PathToRootTerminalFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\";
 
         public static void ItalicBoldFontEnable(Worksheet sheet, string cellFrom, string cellTo)
         {
@@ -71,9 +72,57 @@ namespace TerminalSynhro
 
         public static bool GetInvoicesFromTerminal()
         {
-            if (ConvertInInvoicesToXlsx(PathToInvoiceTerminalFolder))
+            if (!LoadPathToWorkDirectory()) return false;
+            return ConvertInInvoicesToXlsx(PathToInvoiceTerminalFolder);
+        }
+
+        public static bool LoadPathToWorkDirectory()
+        {
+            List<string> tempArr = OpenFileWithConfig();
+            if (tempArr.Count == 3)
+            {
+                PathToExchangeFolder = tempArr[0];
+                PathToInvoiceTerminalFolder = tempArr[1];
+                PathToRootTerminalFolder = tempArr[2];
                 return true;
-            return false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+
+        private static bool EnterDataInTerminalDelete()
+        {
+            try
+            {
+                if (!LoadPathToWorkDirectory()) return false;
+                FileInfo[] fileInfos = TerminalDirectoryInvoiceInfo().GetFiles();
+                foreach (FileInfo item in fileInfos)
+                {
+                    File.Delete(item.FullName);
+                }
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static bool LoadDataToTerminal()
+        {
+            if (!LoadPathToWorkDirectory())
+                return false;
+            if (!EnterDataInTerminalDelete())
+                return false;
+            return ConvertProductsToCsvFile(PathToExchangeFolder + @"OUT\" + "Products.xlsx") &
+                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Contractors.xlsx")) &
+                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsGroup.xlsx")) &
+                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsType.xlsx")) &
+                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Storage.xlsx"));
+
         }
 
         private static bool ConvertInInvoicesToXlsx(string path)
@@ -101,8 +150,11 @@ namespace TerminalSynhro
         {
             try
             {
-                Application excelApp = new Application { Visible = false };
-                excelApp.SheetsInNewWorkbook = 1;
+                Application excelApp = new Application
+                {
+                    Visible = false,
+                    SheetsInNewWorkbook = 1
+                };
                 excelApp.Workbooks.Add(Type.Missing);
                 excelApp.Worksheets.Add();
                 Workbook workBook = excelApp.Workbooks[1];
@@ -117,7 +169,8 @@ namespace TerminalSynhro
 
                 excelApp.DefaultSaveFormat = XlFileFormat.xlExcel12;
                 workBook.Saved = false;
-                workBook.SaveAs(PathToExchangeFolder + @"IN\" + file.Name + ".xlsx", Type.Missing,
+                workBook.SaveAs(PathToExchangeFolder + @"IN\" + file.Name.Split
+                    (new [] {".csv"}, StringSplitOptions.None)[0] + ".xlsx", Type.Missing,
                     Type.Missing, Type.Missing, Type.Missing, Type.Missing, XlSaveAsAccessMode.xlNoChange, Type.Missing,
                     Type.Missing, Type.Missing, Type.Missing, Type.Missing);
                 excelApp.Quit();
@@ -179,8 +232,68 @@ namespace TerminalSynhro
             {
                 return false;
             }
-
         }
+
+        public static bool ConvertDataToCsvFile(FileInfo fileInf)
+        {
+            Application excelApp = new Application { Visible = false };
+            try
+            {
+                excelApp.Workbooks.Open(fileInf.FullName);
+                Worksheet excelWorkSheet = (Worksheet)excelApp.Worksheets.Item[1];
+                bool stop = false;
+                int cellNumber = 1;
+                List<string> resultList = new List<string>();
+                while (!stop)
+                {
+                    object res = CellsValueGet(excelWorkSheet, "A" + cellNumber, "A" + cellNumber);
+                    if (res == null) res = string.Empty;
+                    if (res.ToString() == string.Empty)
+                    {
+                        stop = true;
+                    }
+                    else
+                    {
+                        resultList.Add(res.ToString());
+                        cellNumber++;
+                    }
+                }
+                excelApp.Quit();
+                foreach (string item in resultList)
+                {
+                    WriteLineToFile(item, PathToInvoiceTerminalFolder + 
+                        fileInf.Name.Split(new []{".xls"}, StringSplitOptions.None)[0]  + ".csv");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
+
+        public static List<string> OpenFileWithConfig()
+        {
+            List<string> resultList = new List<string>();
+            try
+            {
+                StreamReader stream = new StreamReader(@"C:\Users\Public\synchropath.ini", Encoding.GetEncoding(1251));
+                string result;
+                while ((result = stream.ReadLine()) != null)
+                {
+                   resultList.Add(result);
+                }
+                stream.Close();
+                stream.Dispose();
+            }
+            catch (Exception)
+            {
+                return new List<string>();
+            }
+            return resultList;
+        }
+
 
         public static List<string[]> InvoiceCsvFileRead(string path)
         {

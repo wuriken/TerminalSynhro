@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace TerminalSynhro
@@ -14,7 +15,9 @@ namespace TerminalSynhro
 
         bool CheckConnectionWithTerminal();
 
-        bool Synchronization();
+        bool GetInvoicesFromTerminal();
+
+        bool LoadDataToTerminal();
     }
 
     [Guid("1B1709D3-9E60-439C-8260-566716DBB0CA"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
@@ -30,14 +33,25 @@ namespace TerminalSynhro
 
         public bool CheckConnectionWithTerminal()
         {
-            ErrorMessages = "Hello wrold";
-            return false;
+            return new DirectoryInfo(MConvert.PathToRootTerminalFolder).Exists;
         }
 
-        bool ISycnhro.Synchronization()
+        public bool GetInvoicesFromTerminal()
         {
-            ErrorMessages = "Hello wrold";
-            return false;
+            try
+            {
+                return MConvert.GetInvoicesFromTerminal();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessages = ex.Message;
+                return false;
+            }
+        }
+
+        public bool LoadDataToTerminal()
+        {
+            return MConvert.LoadDataToTerminal();
         }
 
 
