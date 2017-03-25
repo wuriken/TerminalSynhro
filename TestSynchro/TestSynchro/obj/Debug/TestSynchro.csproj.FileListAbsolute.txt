@@ -6,3 +6,5 @@ C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\
 C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\TerminalSynhro.pdb
 C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\obj\Debug\TestSynchro.exe
 C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\obj\Debug\TestSynchro.pdb
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\OpenNETCF.Desktop.Communication.dll
+C:\Users\user\Desktop\Projects\TerminalSynhro\TestSynchro\TestSynchro\bin\Debug\OpenNETCF.Desktop.Communication.pdb

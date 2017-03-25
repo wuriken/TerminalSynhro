@@ -33,7 +33,8 @@ namespace TerminalSynhro
 
         public bool CheckConnectionWithTerminal()
         {
-            return new DirectoryInfo(MConvert.PathToRootTerminalFolder).Exists;
+                MConvert.WriteLineToFile(MConvert.PathToRootTerminalFolder, @"C:\Users\Public\dll.log");
+                return new DirectoryInfo(MConvert.PathToRootTerminalFolder).Exists;
         }
 
         public bool GetInvoicesFromTerminal()
@@ -45,12 +46,15 @@ namespace TerminalSynhro
             catch (Exception ex)
             {
                 ErrorMessages = ex.Message;
+                MConvert.WriteLineToFile(MConvert.PathToRootTerminalFolder, @"C:\Users\Public\dll.log");
+                MConvert.WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }
         }
 
         public bool LoadDataToTerminal()
         {
+            MConvert.WriteLineToFile(MConvert.PathToRootTerminalFolder, @"C:\Users\Public\dll.log");
             return MConvert.LoadDataToTerminal();
         }
 

@@ -21,8 +21,9 @@ namespace TestSynchro
             //    @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\IN\Inventory_12_23.csv");
             //MConvert.ConvertToExcelDocuments(
             //    @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\IN\Production_12_23.csv");
-            //MConvert.GetInvoicesFromTerminal();
-            MConvert.LoadDataToTerminal();
+            //MConvert.CopyFromDevice();
+            MConvert.GetInvoicesFromTerminal();
+            //MConvert.LoadDataToTerminal();
             Console.ReadKey();
         }
     }

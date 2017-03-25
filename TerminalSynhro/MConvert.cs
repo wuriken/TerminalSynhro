@@ -6,14 +6,15 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Office.Interop.Excel;
+using OpenNETCF.Desktop.Communication;
 
 namespace TerminalSynhro
 {
     public static class MConvert
     {
-        private static string PathToExchangeFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\";
-        private static string PathToInvoiceTerminalFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Invoices\";
-        public static string PathToRootTerminalFolder;// = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\";
+        private static string PathToExchangeFolder = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\";
+        private static string PathToInvoiceTerminalFolder = @"\Program Files\DatalogicScorpio\Invoices\";
+        public static string PathToRootTerminalFolder = @"\Program Files\DatalogicScorpio\";
 
         public static void ItalicBoldFontEnable(Worksheet sheet, string cellFrom, string cellTo)
         {
@@ -72,56 +73,80 @@ namespace TerminalSynhro
 
         public static bool GetInvoicesFromTerminal()
         {
-            if (!LoadPathToWorkDirectory()) return false;
-            return ConvertInInvoicesToXlsx(PathToInvoiceTerminalFolder);
+            CopyFromDevice();
+            if (!ConvertInInvoicesToXlsx(PathToExchangeFolder + @"IN\")) return false;
+            return true; //DirectoriesCopy();
         }
 
-        public static bool LoadPathToWorkDirectory()
+        public static void CopyToDevice(string pathFolder, string pathDevice)
         {
-            List<string> tempArr = OpenFileWithConfig();
-            if (tempArr.Count == 3)
+            RAPI rap = new RAPI();
+            rap.Connect();
+            if (rap.Connected)
             {
-                PathToExchangeFolder = tempArr[0];
-                PathToInvoiceTerminalFolder = tempArr[1];
-                PathToRootTerminalFolder = tempArr[2];
-                return true;
+                rap.CopyFileToDevice(pathFolder, pathDevice, true);
             }
-            else
-            {
-                return false;
-            }
+            rap.Disconnect();
         }
 
+        public static void CopyFromDevice()
+        {
+            RAPI rap = new RAPI();
+            rap.Connect();
+            if (rap.Connected)
+            {
+                IEnumerable<FileInformation> inf = rap.EnumerateFiles(PathToInvoiceTerminalFolder + "*");
+                foreach (var item in inf)
+                {
+                    if (item.FileName.Contains(".csv")) continue;
+                    IEnumerable<FileInformation> informations =
+                        rap.EnumerateFiles(PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\*");
+                    foreach (var file in informations)
+                    {
+                        rap.CopyFileFromDevice(PathToExchangeFolder + @"IN\" + file.FileName, 
+                            PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\" + file.FileName);
+                    }
+                }
+               
+            }
+            rap.Disconnect();
+        }
 
         private static bool EnterDataInTerminalDelete()
         {
             try
             {
-                if (!LoadPathToWorkDirectory()) return false;
-                FileInfo[] fileInfos = TerminalDirectoryInvoiceInfo().GetFiles();
+                FileInfo[] fileInfos = ExchangeDirectoryInfo().GetFiles();
                 foreach (FileInfo item in fileInfos)
                 {
                     File.Delete(item.FullName);
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile("EnterDataInTerminalDelete" + ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }
         }
 
         public static bool LoadDataToTerminal()
         {
-            if (!LoadPathToWorkDirectory())
-                return false;
             if (!EnterDataInTerminalDelete())
                 return false;
-            return ConvertProductsToCsvFile(PathToExchangeFolder + @"OUT\" + "Products.xlsx") &
-                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Contractors.xlsx")) &
-                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsGroup.xlsx")) &
-                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsType.xlsx")) &
-                   ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Storage.xlsx"));
+            if (ConvertProductsToCsvFile(PathToExchangeFolder + @"OUT\" + "Products.xlsx") &
+                ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Contractors.xlsx")) &
+                ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsGroup.xlsx")) &
+                ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsType.xlsx")) &
+                ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Storage.xlsx")))
+            {
+                FileInfo[] fileinF = ExchangeDirectoryInfo().GetFiles();
+                foreach (FileInfo item in fileinF)
+                {
+                    CopyToDevice(item.FullName, PathToInvoiceTerminalFolder + item.Name);
+                }
+            }
+            return true;
 
         }
 
@@ -129,19 +154,20 @@ namespace TerminalSynhro
         {
             try
             {
-                DirectoryInfo[] infDir = new DirectoryInfo(path).GetDirectories();
-                foreach (DirectoryInfo item in infDir)
+                FileInfo[] filesInfo = new DirectoryInfo(path).GetFiles();
+                foreach (var item in filesInfo)
                 {
-                    FileInfo[] infFiles = item.GetFiles();
-                    foreach (FileInfo file in infFiles)
+                    if (item.Name.Contains(".csv"))
                     {
-                        ConvertToExcelDocuments(file);
+                        ConvertToExcelDocuments(item);
+                        item.Delete();
                     }
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile("ConvertToXlSx" + ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }  
         }
@@ -173,11 +199,14 @@ namespace TerminalSynhro
                     (new [] {".csv"}, StringSplitOptions.None)[0] + ".xlsx", Type.Missing,
                     Type.Missing, Type.Missing, Type.Missing, Type.Missing, XlSaveAsAccessMode.xlNoChange, Type.Missing,
                     Type.Missing, Type.Missing, Type.Missing, Type.Missing);
+                WriteLineToFile("File " + PathToExchangeFolder + @"IN\" + file.Name.Split(new [] {".csv"}, StringSplitOptions.None)[0] 
+                    + " converted and copied.", @"C:\Users\Public\dll.log");
                 excelApp.Quit();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }
         }
@@ -224,12 +253,13 @@ namespace TerminalSynhro
                 excelApp.Quit();
                 foreach (string item in resultList)
                 {
-                    WriteLineToFile(item, PathToInvoiceTerminalFolder + "Products.csv");
+                    WriteLineToFile(item, PathToExchangeFolder + "Products.csv");
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }
         }
@@ -246,8 +276,7 @@ namespace TerminalSynhro
                 List<string> resultList = new List<string>();
                 while (!stop)
                 {
-                    object res = CellsValueGet(excelWorkSheet, "A" + cellNumber, "A" + cellNumber);
-                    if (res == null) res = string.Empty;
+                    object res = CellsValueGet(excelWorkSheet, "A" + cellNumber, "A" + cellNumber) ?? string.Empty;
                     if (res.ToString() == string.Empty)
                     {
                         stop = true;
@@ -261,17 +290,19 @@ namespace TerminalSynhro
                 excelApp.Quit();
                 foreach (string item in resultList)
                 {
-                    WriteLineToFile(item, PathToInvoiceTerminalFolder + 
+                    WriteLineToFile(item, PathToExchangeFolder + 
                         fileInf.Name.Split(new []{".xls"}, StringSplitOptions.None)[0]  + ".csv");
                 }
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return false;
             }
         }
+
+
 
         public static List<string> OpenFileWithConfig()
         {
@@ -282,13 +313,15 @@ namespace TerminalSynhro
                 string result;
                 while ((result = stream.ReadLine()) != null)
                 {
+                    WriteLineToFile(result, @"C:\Users\Public\dll.log");
                    resultList.Add(result);
                 }
                 stream.Close();
                 stream.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return new List<string>();
             }
             return resultList;
@@ -313,8 +346,9 @@ namespace TerminalSynhro
                 stream.Close();
                 stream.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
                 return new List<string[]>();
             }
             return resultList;
@@ -334,7 +368,51 @@ namespace TerminalSynhro
             }
             catch (Exception ex)
             {
+                WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
             }
+        }
+
+        public static bool DirectoriesCopy()
+        {
+            if (TerminalDirectoryInvoiceInfo() != null)
+            {
+                string path = TerminalDirectoryInvoiceInfo().Parent.FullName + @"\Archives";
+                if (!Directory.Exists(path))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(path);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
+                        return false;
+                    }
+                }
+                try
+                {
+                    DirectoryInfo[] dirs = TerminalDirectoryInvoiceInfo().GetDirectories();
+                    foreach (DirectoryInfo item in dirs)
+                    {
+                        Directory.CreateDirectory(PathToRootTerminalFolder + @"\Archives\" + item.Name);
+                        FileInfo[] fileInf = item.GetFiles();
+                        foreach (FileInfo file in fileInf)
+                        {
+                            File.Move(PathToInvoiceTerminalFolder + item.Name + @"\" + file.Name,
+                                PathToRootTerminalFolder + @"\Archives\" + item.Name + @"\" + file.Name);
+                            WriteLineToFile("File: " + item.Name + @"\" + file.Name + " moved.", @"C:\Users\Public\dll.log");
+                        }
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
+                    return false;
+                }
+            }
+            return false;
+
         }
 
     }
