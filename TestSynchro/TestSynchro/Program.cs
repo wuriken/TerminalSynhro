@@ -24,6 +24,8 @@ namespace TestSynchro
             //MConvert.CopyFromDevice();
             MConvert.GetInvoicesFromTerminal();
             //MConvert.LoadDataToTerminal();
+           // bool ccc = MConvert.CheckTerminal();
+            Console.WriteLine(); 
             Console.ReadKey();
         }
     }

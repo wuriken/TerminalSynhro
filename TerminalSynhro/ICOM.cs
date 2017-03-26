@@ -33,8 +33,7 @@ namespace TerminalSynhro
 
         public bool CheckConnectionWithTerminal()
         {
-                MConvert.WriteLineToFile(MConvert.PathToRootTerminalFolder, @"C:\Users\Public\dll.log");
-                return new DirectoryInfo(MConvert.PathToRootTerminalFolder).Exists;
+            return MConvert.CheckTerminal();
         }
 
         public bool GetInvoicesFromTerminal()

@@ -12,7 +12,7 @@ namespace TerminalSynhro
 {
     public static class MConvert
     {
-        private static string PathToExchangeFolder = @"C:\Users\user\Desktop\Projects\DatalogicScorpio\Exchange\";
+        private static string PathToExchangeFolder = @"D:\1C\Exchange\";
         private static string PathToInvoiceTerminalFolder = @"\Program Files\DatalogicScorpio\Invoices\";
         public static string PathToRootTerminalFolder = @"\Program Files\DatalogicScorpio\";
 
@@ -73,43 +73,81 @@ namespace TerminalSynhro
 
         public static bool GetInvoicesFromTerminal()
         {
-            CopyFromDevice();
+            if(!CopyFromDevice()) return false;
             if (!ConvertInInvoicesToXlsx(PathToExchangeFolder + @"IN\")) return false;
-            return true; //DirectoriesCopy();
+            return true; 
         }
 
-        public static void CopyToDevice(string pathFolder, string pathDevice)
+        public static bool CopyToDevice(string pathFolder, string pathDevice)
         {
             RAPI rap = new RAPI();
-            rap.Connect();
-            if (rap.Connected)
+            try
             {
-                rap.CopyFileToDevice(pathFolder, pathDevice, true);
-            }
-            rap.Disconnect();
-        }
-
-        public static void CopyFromDevice()
-        {
-            RAPI rap = new RAPI();
-            rap.Connect();
-            if (rap.Connected)
-            {
-                IEnumerable<FileInformation> inf = rap.EnumerateFiles(PathToInvoiceTerminalFolder + "*");
-                foreach (var item in inf)
+                rap.Connect();
+                if (rap.Connected)
                 {
-                    if (item.FileName.Contains(".csv")) continue;
-                    IEnumerable<FileInformation> informations =
-                        rap.EnumerateFiles(PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\*");
-                    foreach (var file in informations)
-                    {
-                        rap.CopyFileFromDevice(PathToExchangeFolder + @"IN\" + file.FileName, 
-                            PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\" + file.FileName);
-                    }
+                    rap.CopyFileToDevice(pathFolder, pathDevice, true);
                 }
-               
+                rap.Disconnect();
+                return true;
             }
-            rap.Disconnect();
+            catch (Exception ex)
+            {
+                WriteLineToFile("CopyToDevice " + ex.Message, @"C:\Users\Public\dll.log");
+                return false;
+            }
+           
+        }
+
+        public static bool CheckTerminal()
+        {
+            RAPI rap = new RAPI();
+            try
+            {
+                return rap.DevicePresent;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static bool CopyFromDevice()
+        {
+            RAPI rap = new RAPI();
+            rap.Connect();
+            try
+            {
+                if (rap.Connected)
+                {
+                    IEnumerable<FileInformation> inf = rap.EnumerateFiles(PathToInvoiceTerminalFolder + "*");
+                    foreach (var item in inf)
+                    {
+                        if (item.FileName.Contains(".csv")) continue;
+                        IEnumerable<FileInformation> informations =
+                            rap.EnumerateFiles(PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\*");
+                        foreach (var file in informations)
+                        {
+                            if (!file.FileName.EndsWith(".exc"))
+                            {
+                                rap.CopyFileFromDevice(PathToExchangeFolder + @"IN\" + file.FileName,
+                                    PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\" + file.FileName);
+                                rap.MoveDeviceFile(
+                                    PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\" + file.FileName,
+                                    PathToInvoiceTerminalFolder + @"\" + item.FileName + @"\" + file.FileName + ".exc");
+                            }
+                        }
+                    }
+
+                }
+                rap.Disconnect();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                WriteLineToFile("CopyFromDevice " + ex.Message, @"C:\Users\Public\dll.log");
+                return false;
+            }
         }
 
         private static bool EnterDataInTerminalDelete()
@@ -140,13 +178,25 @@ namespace TerminalSynhro
                 ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "ProductsType.xlsx")) &
                 ConvertDataToCsvFile(new FileInfo(PathToExchangeFolder + @"OUT\" + "Storage.xlsx")))
             {
-                FileInfo[] fileinF = ExchangeDirectoryInfo().GetFiles();
-                foreach (FileInfo item in fileinF)
+                try
                 {
-                    CopyToDevice(item.FullName, PathToInvoiceTerminalFolder + item.Name);
+                    FileInfo[] fileinF = ExchangeDirectoryInfo().GetFiles();
+                    foreach (FileInfo item in fileinF)
+                    {
+                        CopyToDevice(item.FullName, PathToInvoiceTerminalFolder + item.Name);
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    WriteLineToFile("LoadDataToTerminal " + ex.Message, @"C:\Users\Public\dll.log");
+                    return false;
                 }
             }
-            return true;
+            else
+            {
+                return false;
+            }            
 
         }
 
@@ -372,48 +422,6 @@ namespace TerminalSynhro
             }
         }
 
-        public static bool DirectoriesCopy()
-        {
-            if (TerminalDirectoryInvoiceInfo() != null)
-            {
-                string path = TerminalDirectoryInvoiceInfo().Parent.FullName + @"\Archives";
-                if (!Directory.Exists(path))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(path);
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
-                        return false;
-                    }
-                }
-                try
-                {
-                    DirectoryInfo[] dirs = TerminalDirectoryInvoiceInfo().GetDirectories();
-                    foreach (DirectoryInfo item in dirs)
-                    {
-                        Directory.CreateDirectory(PathToRootTerminalFolder + @"\Archives\" + item.Name);
-                        FileInfo[] fileInf = item.GetFiles();
-                        foreach (FileInfo file in fileInf)
-                        {
-                            File.Move(PathToInvoiceTerminalFolder + item.Name + @"\" + file.Name,
-                                PathToRootTerminalFolder + @"\Archives\" + item.Name + @"\" + file.Name);
-                            WriteLineToFile("File: " + item.Name + @"\" + file.Name + " moved.", @"C:\Users\Public\dll.log");
-                        }
-                    }
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    WriteLineToFile(ex.Message, @"C:\Users\Public\dll.log");
-                    return false;
-                }
-            }
-            return false;
-
-        }
 
     }
 }
